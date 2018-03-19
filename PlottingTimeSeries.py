@@ -41,17 +41,18 @@ def getDataFromFile(file_name):
 	#plt.show()
 
 	#iterate through the rows to create objects
-	#for index, row in data.iterrows():
-	#	#print( row[0], row[1], row[2])
-	#	tweet = Tweet(row[0], row[1], row[2])
-	#	tweet_list.append(tweet)
+	for index, row in data.iterrows():
+		#print( row[0], row[1], row[2])
+		tweet = Tweet(row[0], row[1], row[2])
+		tweet_list.append(tweet)
 
 	return tweet_list
 
 def main():
-	file_name = "/bitcoins_2.csv"
+	file_name = "/bitcoins_for_plotting.csv"
 	
 	tweet_list = getDataFromFile(file_name)
+
 
 
 main()
