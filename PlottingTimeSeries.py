@@ -13,11 +13,29 @@ class Tweet:
 			self.Sentiment = sentiment
 			self.Perc = perc
 
+class Tweet_cluster:
+	def __init__(self, time, sentiment, count):
+			self.Timestamp = time
+			self.Sentiment = sentiment
+			self.Count = count
+			self.Color = self.color(sentiment)
+
+	def color(self, sentiment):
+		if sentiment == "negative":
+			Color = 'r'
+		elif sentiment == "positive":
+			Color = 'b'
+		else:
+			Color = 'y'
+
+		return Color
+
 # function responsible for opening file and reading file content
 def getDataFromFile(file_name):
     
 	#list of tweet objects 
 	tweet_list = []
+	tweetC_list = [] # for plotting
 
 	data = pd.read_csv(file_name, sep = ",", header=None)
 
@@ -26,33 +44,38 @@ def getDataFromFile(file_name):
 
 	#group the data by date and sentiment to get count of occurrances
 	group_data = data.groupby([0, 1]).size()
-	print(group_data) 
 
-	group_data.plot(x=[0], label='model')
-	plt.legend(loc='Date')    
-	plt.show()
+	#build the "cluster"/grouped by object
+	for index, val in group_data.iteritems():
+		tweetC = Tweet_cluster(index[0], index[1], val)
+		tweetC_list.append(tweetC)
 
-	#for key, grp in data.groupby([0, 1]):
-	#	print(grp)
-	#	plt.plot(grp[0], label=key)
-	#	grp[3] = pd.rolling_mean(grp[1], window=5)    
-	#	plt.plot(grp[3], label='rolling ({k})'.format(k=key))
-	#plt.legend(loc='best')    
-	#plt.show()
 
-	#iterate through the rows to create objects
+	#iterate through the rows to list of tweet objects
 	for index, row in data.iterrows():
 		#print( row[0], row[1], row[2])
 		tweet = Tweet(row[0], row[1], row[2])
 		tweet_list.append(tweet)
 
-	return tweet_list
+	return tweet_list, tweetC_list
+
+def plotScatterChart(tweetC_list):
+	# for plotting the chart
+	y_values = [x.Timestamp for x in tweetC_list]
+	x_values = [x.Count for x in tweetC_list]
+	c_value = [x.Color for x in tweetC_list]
+
+	plt.scatter(y_values, x_values, c=c_value)
+	plt.legend(loc='Date') 
+	plt.show()
 
 def main():
 	file_name = "/bitcoins_for_plotting.csv"
 	
-	tweet_list = getDataFromFile(file_name)
+	tweet_list, tweetC_list = getDataFromFile(file_name)
 
+	#first plot the chart
+	plotScatterChart(tweetC_list)
 
 
 main()
