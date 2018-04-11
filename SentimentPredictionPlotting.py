@@ -54,7 +54,7 @@ def getDataFromFile(tweet_file_name, bitcoin_file_name):
     btcData = btcData.sort_values(by=['Date'])	
 
     ## group the data by date and sentiment to get count of occurrances
-    group_data = data.groupby([0, 1]).size()
+    #group_data = tweetData.groupby([0, 1]).size()
 
     #build the "cluster"/grouped by object
     for index, val in group_data.iteritems():
