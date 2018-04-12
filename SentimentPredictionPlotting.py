@@ -19,6 +19,19 @@ class Tweet:
         self.Sentiment = sentiment
         self.Perc = perc
         self.Price = price
+        self.Weight = self.weight(sentiment)
+    
+    ## Giving weights to the sentiment because scikit learn doesn't read non numerical data for sentiment
+    def weight(self, sentiment):
+	    if sentiment == "negative":
+		    weight = 0
+	    elif sentiment == "positive":
+		    weight = 1
+	    else:
+		    weight = 2 # neutral == 2
+
+	    return weight
+
 
 class Tweet_cluster:
 
@@ -97,7 +110,7 @@ def implementBaysianRegression(tweet_list):
     y = np.array(y)
     y = np.sort(y)
 
-    X = [[x.Timestamp.day for x in tweet_list], [x.Perc for x in tweet_list]]  
+    X = [[x.Timestamp.day for x in tweet_list], [x.Weight for x in tweet_list],  [x.Perc for x in tweet_list]]  
     #X = [x for i,x in enumerate(tweet_list) if i !=3 ]
     X = np.transpose(np.matrix(X))
     X = np.sort(X)
@@ -120,11 +133,11 @@ def implementBaysianRegression(tweet_list):
     pred_test = ols.predict(X_test) 
 
     ## --> see the mean squared error -- since we have only one feature -- we shouldn't be too concerned with this
-    #print("Fit a model X_train, and calculate MSE with Y_train: ", np.mean((Y_train - ols_train.predict(X_train)) ** 2) )
-    #print("Fit a model X_train, and calculate MSE with X_test, Y_test: ", np.mean((Y_test - ols_train.predict(X_test)) ** 2) )
+    print("Fit a model X_train, and calculate MSE with Y_train: ", np.mean((Y_train - ols.predict(X_train)) ** 2) )
+    print("Fit a model X_train, and calculate MSE with X_test, Y_test: ", np.mean((Y_test - ols.predict(X_test)) ** 2) )
 
-    ## --> based off COEF value it looks like sentiment has a better chance of predicting price, then date
-    ## which is the feature we're concerned with
+    ## --> based off COEF value it looks like sentiment has a better chance of predicting price, here i'm comparing the 
+    ##     percentage of sentiment versus the "weights of the sentiment"
     #print("COEF IS --> ", clf.coef_)
     #print("OLS COEF IS --> ", ols.coef_)
 
