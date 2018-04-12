@@ -95,7 +95,7 @@ def plotScatterChart(tweetC_list):
 	plt.show()
 
 
-def implementBaysianRegression(tweet_list):
+def splitTestTrainingData(tweet_list):
 
     ## #############################################################################
     ## X : numpy array of shape [n_samples, n_features]
@@ -116,6 +116,11 @@ def implementBaysianRegression(tweet_list):
     ## #############################################################################
     ## Split training/test data (70% training data)
     X_train, X_test, Y_train, Y_test = sklearn.model_selection.train_test_split(X, y, test_size = 0.70, random_state = 5)
+
+    return X_train, X_test, Y_train, Y_test
+
+
+def implementBaysianRegression(X_train, X_test, Y_train, Y_test):
 
     ## #############################################################################
     ## Fit the Bayesian Ridge Regression and an Ordinary least squares linear regression
@@ -150,6 +155,15 @@ def implementBaysianRegression(tweet_list):
     
 def implementSVM(tweet_list):
 
+    ## #############################################################################
+    ## Fit SVM
+    clf = svm.SVC(gamma=0.001, C=100)
+    clf.fit(X_train, Y_train)
+
+    print(clf.predict(X_test))
+
+
+
     ## upload code here once ready 
     return ""
 
@@ -158,20 +172,27 @@ def main():
     tweet_file_name = "D:\Twitter_Dataset\\bitcoins_for_plotting.csv"
     btc_file_name = "D:\Twitter_Dataset\\bitcoin_price.csv"
     
+    ##----------------------------------------------------------------------------------
     ## Gather the data from the files into different object types
     tweet_list, tweetC_list, df = getDataFromFile(tweet_file_name, btc_file_name)
 
+    ##----------------------------------------------------------------------------------
+    ## Split the data into testing and training data 
+    X_train, X_test, Y_train, Y_test = splitTestTrainingData(tweet_list)
+
+    ##----------------------------------------------------------------------------------
     ## Implement the various algorithms for price predictions
     
     #Linear Baysian Algorithm
-    linearBaysian, lb_pred_train, lb_pred_test = implementBaysianRegression(tweet_list)
+    linearBaysian, lb_pred_train, lb_pred_test = implementBaysianRegression(X_train, X_test, Y_train, Y_test)
     
     # Logistic regression goes here 
    
     # SVM
-    #SVM = implementSVM(tweet_list)
+    SVM = implementSVM(X_train, X_test, Y_train, Y_test)
 
-    # Sabreen To-Do: Find a generic way to plot all the regressions here 
+    ##----------------------------------------------------------------------------------
+    ## Sabreen To-Do: Find a generic way to plot all the regressions here 
     
     ## first plot the chart of sentiment distribution 
     #plotScatterChart(tweetC_list)
