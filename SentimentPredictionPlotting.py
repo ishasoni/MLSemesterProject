@@ -3,10 +3,10 @@ import codecs
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import sklearn
 from datetime import datetime, timedelta
 from scipy import stats
 from sklearn.linear_model import BayesianRidge, LinearRegression
-import sklearn
 from sklearn.svm import SVR
 
 #class object for tweets sentiment data
@@ -59,10 +59,11 @@ def getDataFromFile(tweet_file_name, bitcoin_file_name):
     btcData = pd.read_csv(bitcoin_file_name, sep = ",", names=['Date', 'Price'])
     btcData['Date'] = pd.to_datetime(btcData['Date']).dt.strftime("%Y-%m-%d")
 
-    ## sort by date and sentiment
+    ## sort dataframes by date and sentiment
     tweetData = tweetData.sort_values(by=['Date', 'Sentiment'])	
     btcData = btcData.sort_values(by=['Date'])
-    #bitcoinPrices = list(btcData.set_index('Date').to_dict().values()).pop()
+
+    ## Dictionary for holding EOD BTC price for each Date
     bitcoinPrices = dict(zip(btcData['Date'],btcData['Price']))
 
     ## group the data by date and sentiment to get count of occurrances
@@ -73,17 +74,19 @@ def getDataFromFile(tweet_file_name, bitcoin_file_name):
     	tweetC = Tweet_cluster(index[0], index[1], val)
     	tweetC_list.append(tweetC)
 
-    ##iterate through the rows to list of tweet objects
+    ##iterate through the rows to create list of tweet objects
     for index, row in tweetData.iterrows():
 	    tweet = Tweet(row[0], row[1], row[2], getPriceValue(row[0], bitcoinPrices), getUpOrDownValue(row[0], bitcoinPrices))
 	    tweet_list.append(tweet)
         
     return tweet_list, tweetC_list, tweetData
 
+
 ## Method for retrieving the BTC price value for the tweets date 
 def getPriceValue(tweet_date, bitcoinPrices):
 
     return bitcoinPrices.get(tweet_date, 0) # default of 0
+
 
 ## Method for retrieving the BTC price value for the tweets date 
 def getUpOrDownValue(tweet_date, bitcoinPrices):
@@ -113,7 +116,7 @@ def splitTestTrainingData(tweet_list):
     ##    the features that are contributing -- in the date and sentiment perc.
     ## y : numpy array  of shape [n_samples]
     ##    Target values -- this is what we are trying to evaluate/predict 
-    ##    the Bitcoin price
+    ##    the Bitcoin price or the 1/-1 value to indicate fluctuation in price
 
     #y = [x.Price for x in tweet_list] ## Use Price variable when trying to predict the BTC price
     y = [x.upOrDownPrice for x in tweet_list] ## Use upOrDownPrice variable when trying to predict the BTC fluctuation
