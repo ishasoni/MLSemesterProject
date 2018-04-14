@@ -3,21 +3,23 @@ import codecs
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from datetime import datetime
+from datetime import datetime, timedelta
 from scipy import stats
 from sklearn.linear_model import BayesianRidge, LinearRegression
 import sklearn
+from sklearn.svm import SVR
 
 #class object for tweets sentiment data
 class Tweet:
-    def __init__(self, time, sentiment, score, price):
+    def __init__(self, time, sentiment, score, price, upOrDown):
         #self.Timestamp = time
         self.Timestamp = datetime.strptime(time, "%Y-%m-%d")
         self.Sentiment = sentiment
         self.Score = score
         self.Price = price
         self.sentimentWeight = self.sentimentWeight(sentiment)
-    
+        self.upOrDownPrice = upOrDown
+
     ## Giving weights to the sentiment because scikit learn doesn't read non numerical data for sentiment
     def sentimentWeight(self, sentiment):
 	    if sentiment == "negative":
@@ -73,7 +75,7 @@ def getDataFromFile(tweet_file_name, bitcoin_file_name):
 
     ##iterate through the rows to list of tweet objects
     for index, row in tweetData.iterrows():
-	    tweet = Tweet(row[0], row[1], row[2], getPriceValue(row[0], bitcoinPrices))
+	    tweet = Tweet(row[0], row[1], row[2], getPriceValue(row[0], bitcoinPrices), getUpOrDownValue(row[0], bitcoinPrices))
 	    tweet_list.append(tweet)
         
     return tweet_list, tweetC_list, tweetData
@@ -82,6 +84,15 @@ def getDataFromFile(tweet_file_name, bitcoin_file_name):
 def getPriceValue(tweet_date, bitcoinPrices):
 
     return bitcoinPrices.get(tweet_date, 0) # default of 0
+
+## Method for retrieving the BTC price value for the tweets date 
+def getUpOrDownValue(tweet_date, bitcoinPrices):
+    #Get previous day
+    prevDay = (datetime.strptime(tweet_date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+    
+    # return 1 if current price increased from previous day 
+    # return -1 if current price decreased from previous day
+    return np.where(bitcoinPrices.get(tweet_date, 0) > bitcoinPrices.get(prevDay, 0), 1, -1)
 
 
 def plotScatterChart(tweetC_list):
@@ -104,12 +115,12 @@ def splitTestTrainingData(tweet_list):
     ##    Target values -- this is what we are trying to evaluate/predict 
     ##    the Bitcoin price
 
-    y = [x.Price for x in tweet_list]
+    #y = [x.Price for x in tweet_list] ## Use Price variable when trying to predict the BTC price
+    y = [x.upOrDownPrice for x in tweet_list] ## Use upOrDownPrice variable when trying to predict the BTC fluctuation
     y = np.array(y)
     y = np.sort(y)
 
     X = [[x.Timestamp.day for x in tweet_list], [x.sentimentWeight for x in tweet_list],  [x.Score for x in tweet_list]]  
-    #X = [x for i,x in enumerate(tweet_list) if i !=3 ]
     X = np.transpose(np.matrix(X))
     X = np.sort(X)
 
@@ -128,12 +139,16 @@ def implementBaysianRegression(X_train, X_test, Y_train, Y_test):
     clf.fit(X_train, Y_train)
 
     #ols = LinearRegression()
-    ols = LinearRegression(copy_X=True, fit_intercept=True, normalize=False)
+    ols = LinearRegression(copy_X = True, fit_intercept = True, normalize = False)
     ols.fit(X_train, Y_train)
 
-    #predit 
+    ## predit 
     pred_train = ols.predict(X_train)
     pred_test = ols.predict(X_test) 
+
+    ## --> Testing
+    confidence = ols.score(X_test, Y_test)
+    print("Testing confidence: ", confidence)
 
     ## --> see the mean squared error -- since we have only one feature -- we shouldn't be too concerned with this
     print("Fit a model X_train, and calculate MSE with Y_train: ", np.mean((Y_train - ols.predict(X_train)) ** 2) )
@@ -153,18 +168,31 @@ def implementBaysianRegression(X_train, X_test, Y_train, Y_test):
 
     return ols, pred_train, pred_test
     
-def implementSVM(tweet_list):
+def implementSVM(X_train, X_test, Y_train, Y_test, tweet_list):
 
     ## #############################################################################
-    ## Fit SVM
-    clf = svm.SVC(gamma=0.001, C=100)
-    clf.fit(X_train, Y_train)
+    ## Fit SVM regression model
+    svr_rbf = SVR(kernel='rbf', C=1e3, gamma=0.1)
+    svr_lin = SVR(kernel='linear', C=1e3)
+    svr_poly = SVR(kernel='poly', C=1e3, degree=2)
+    
+    svr_rbf.fit(X_train, Y_train)
+    svr_lin.fit(X_train, Y_train)
+    svr_poly.fit(X_train, Y_train)
 
-    print(clf.predict(X_test))
+    predict_num = '02' ##int(dates[0]) + 1
 
+    print("RBF = " + str(svr_rbf.predict(X_train)))
+    print("Lin = " + str(svr_lin.predict(X_train)))
+    print("Poly = " + str(svr_poly.predict(X_train)))
 
+    ##Draw black dots representing prices
+    #plt.plot(X_train, svr_lin.predict(X_train), color = 'blue', linewidth = 3, label = 'Linear Model')
+    #plt.plot(X_train, svr_poly.predict(X_train), color = 'green', linewidth = 3, label = 'Polynomial Model')
+    #plt.plot(X_train, svr_rbf.predict(X_train), color = 'red', linewidth = 4, label = 'RBF Model')
+    #plt.show()
 
-    ## upload code here once ready 
+    ## return required variable here once ready 
     return ""
 
 def main():
@@ -189,7 +217,8 @@ def main():
     # Logistic regression goes here 
    
     # SVM
-    SVM = implementSVM(X_train, X_test, Y_train, Y_test)
+    # TODO: Still working on SVM
+    #SVM = implementSVM(X_train, X_test, Y_train, Y_test, tweet_list)
 
     ##----------------------------------------------------------------------------------
     ## Sabreen To-Do: Find a generic way to plot all the regressions here 
