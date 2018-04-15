@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 import sklearn
 from datetime import datetime, timedelta
 from scipy import stats
-from sklearn.linear_model import BayesianRidge, LinearRegression, LogisticRegression
+from sklearn.linear_model import BayesianRidge, LinearRegression
 from sklearn.svm import SVR
 
 #class object for tweets sentiment data
 class Tweet:
     def __init__(self, time, sentiment, score, price, upOrDown):
         #self.Timestamp = time
-        self.Timestamp = datetime.strptime(time, "%m/%d/%Y")
+        self.Timestamp = datetime.strptime(time, "%Y-%m-%d")
         self.Sentiment = sentiment
         self.Score = score
         self.Price = price
@@ -22,14 +22,14 @@ class Tweet:
 
     ## Giving weights to the sentiment because scikit learn doesn't read non numerical data for sentiment
     def sentimentWeight(self, sentiment):
-        if sentiment == "negative":
-            weight = 0
-        elif sentiment == "positive":
-            weight = 1
-        else:
-            weight = 2 # neutral == 2
+	    if sentiment == "negative":
+		    weight = 0
+	    elif sentiment == "positive":
+		    weight = 1
+	    else:
+		    weight = 2 # neutral == 2
 
-        return weight
+	    return weight
 
 class Tweet_cluster:
     def __init__(self, time, sentiment, count):
@@ -39,14 +39,14 @@ class Tweet_cluster:
         self.Color = self.color(sentiment)
 
     def color(self, sentiment):
-        if sentiment == "negative":
-            Color = 'r'
-        elif sentiment == "positive":
-            Color = 'b'
-        else:
-            Color = 'y'
+	    if sentiment == "negative":
+		    Color = 'r'
+	    elif sentiment == "positive":
+		    Color = 'b'
+	    else:
+		    Color = 'y'
 
-        return Color
+	    return Color
 
 ## Function responsible for opening file and reading file content
 def getDataFromFile(tweet_file_name, bitcoin_file_name):
@@ -57,9 +57,8 @@ def getDataFromFile(tweet_file_name, bitcoin_file_name):
 
     tweetData = pd.read_csv(tweet_file_name, sep = ",", names=['Date', 'Sentiment', 'Perc'])
     btcData = pd.read_csv(bitcoin_file_name, sep = ",", names=['Date', 'Price'])
-    btcData['Date'] = pd.to_datetime(btcData['Date']).dt.strftime("%m/%d/%Y")
-    
-    
+    btcData['Date'] = pd.to_datetime(btcData['Date']).dt.strftime("%Y-%m-%d")
+
     ## sort dataframes by date and sentiment
     tweetData = tweetData.sort_values(by=['Date', 'Sentiment'])	
     btcData = btcData.sort_values(by=['Date'])
@@ -72,13 +71,13 @@ def getDataFromFile(tweet_file_name, bitcoin_file_name):
 
     ##build the "cluster"/grouped by object
     for index, val in group_data.iteritems():
-        tweetC = Tweet_cluster(index[0], index[1], val)
-        tweetC_list.append(tweetC)
+    	tweetC = Tweet_cluster(index[0], index[1], val)
+    	tweetC_list.append(tweetC)
 
     ##iterate through the rows to create list of tweet objects
     for index, row in tweetData.iterrows():
-        tweet = Tweet(row[0], row[1], row[2], getPriceValue(row[0], bitcoinPrices), getUpOrDownValue(row[0], bitcoinPrices))
-        tweet_list.append(tweet)
+	    tweet = Tweet(row[0], row[1], row[2], getPriceValue(row[0], bitcoinPrices), getUpOrDownValue(row[0], bitcoinPrices))
+	    tweet_list.append(tweet)
         
     return tweet_list, tweetC_list, tweetData
 
@@ -92,7 +91,7 @@ def getPriceValue(tweet_date, bitcoinPrices):
 ## Method for retrieving the BTC price value for the tweets date 
 def getUpOrDownValue(tweet_date, bitcoinPrices):
     #Get previous day
-    prevDay = (datetime.strptime(tweet_date, "%m/%d/%Y") - timedelta(days=1)).strftime("%m/%d/%Y")
+    prevDay = (datetime.strptime(tweet_date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
     
     # return 1 if current price increased from previous day 
     # return -1 if current price decreased from previous day
@@ -100,14 +99,14 @@ def getUpOrDownValue(tweet_date, bitcoinPrices):
 
 
 def plotScatterChart(tweetC_list):
-    # for plotting the chart
-    x_values = [x.Timestamp for x in tweetC_list]
-    y_values = [x.Count for x in tweetC_list]
-    c_value = [x.Color for x in tweetC_list]
+	# for plotting the chart
+	x_values = [x.Timestamp for x in tweetC_list]
+	y_values = [x.Count for x in tweetC_list]
+	c_value = [x.Color for x in tweetC_list]
 
-    plt.scatter(x_values, y_values, c=c_value)
-    plt.legend(loc='Date') 
-    plt.show()
+	plt.scatter(x_values, y_values, c=c_value)
+	plt.legend(loc='Date') 
+	plt.show()
 
 
 def splitTestTrainingData(tweet_list):
@@ -123,22 +122,16 @@ def splitTestTrainingData(tweet_list):
     y = [x.upOrDownPrice for x in tweet_list] ## Use upOrDownPrice variable when trying to predict the BTC fluctuation
     y = np.array(y)
     y = np.sort(y)
-    np.savetxt('y2.txt', y)
-
 
     X = [[x.Timestamp.day for x in tweet_list], [x.sentimentWeight for x in tweet_list],  [x.Score for x in tweet_list]]  
-    
     X = np.transpose(np.matrix(X))
     X = np.sort(X)
-    print (X.shape)
-    print (y.shape)
 
     ## #############################################################################
     ## Split training/test data (70% training data)
-    X_train, X_test, Y_train, Y_test = sklearn.model_selection.train_test_split(X, y, test_size = 0.70, random_state = 25)
+    X_train, X_test, Y_train, Y_test = sklearn.model_selection.train_test_split(X, y, test_size = 0.70, random_state = 5)
 
     return X_train, X_test, Y_train, Y_test
-
 
 
 def implementBaysianRegression(X_train, X_test, Y_train, Y_test):
@@ -207,8 +200,8 @@ def implementSVM(X_train, X_test, Y_train, Y_test, tweet_list):
 
 def main():
     # Enter the location of the CSV Datasets 
-    tweet_file_name = "bitcoins_for_plotting.csv"
-    btc_file_name = "bitcoin_price.csv"
+    tweet_file_name = "D:\Twitter_Dataset\\bitcoins_for_plotting.csv"
+    btc_file_name = "D:\Twitter_Dataset\\bitcoin_price.csv"
     
     ##----------------------------------------------------------------------------------
     ## Gather the data from the files into different object types
@@ -218,13 +211,17 @@ def main():
     ## Split the data into testing and training data 
     X_train, X_test, Y_train, Y_test = splitTestTrainingData(tweet_list)
 
+    for x in tweet_list:
+        print("--> ", x.upOrDownPrice, x.Price)
+
     ##----------------------------------------------------------------------------------
     ## Implement the various algorithms for price predictions
     
     #Linear Baysian Algorithm
-    # linearBaysian, lb_pred_train, lb_pred_test = implementBaysianRegression(X_train, X_test, Y_train, Y_test)
+    #linearBaysian, lb_pred_train, lb_pred_test = implementBaysianRegression(X_train, X_test, Y_train, Y_test)
     
     # Logistic regression goes here 
+   
     # SVM
     # TODO: Still working on SVM
     #SVM = implementSVM(X_train, X_test, Y_train, Y_test, tweet_list)
@@ -232,7 +229,7 @@ def main():
     ##----------------------------------------------------------------------------------
     ## Sabreen To-Do: Find a generic way to plot all the regressions here 
     
-    ## first plot the chart of sentiment distribution 
+    ##   plot the chart of sentiment distribution 
     #plotScatterChart(tweetC_list)
 
 main()
