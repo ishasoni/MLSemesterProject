@@ -9,10 +9,11 @@ import sklearn
 from datetime import datetime, timedelta
 from scipy import stats
 from sklearn.linear_model import BayesianRidge, LinearRegression, LogisticRegression
-from sklearn.metrics import mean_squared_error, classification_report, confusion_matrix
+from sklearn.metrics import mean_squared_error, classification_report, confusion_matrix, f1_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.svm import SVR
+import scipy 
 
 #class object for tweets sentiment data
 class Tweet:
@@ -119,14 +120,13 @@ def splitTestTrainingData(tweet_list):
     y = np.sort(y)
 
     #X = [[x.Timestamp.day for x in tweet_list], [x.Score for x in tweet_list], [x.sentimentWeight for x in tweet_list]]  
-    #X = [[x.Timestamp.day for x in tweet_list], [x.Score for x in tweet_list]]
     X = [[x.Score for x in tweet_list]]
     X = np.transpose(np.matrix(X))
     X = np.sort(X)
 
     ## #############################################################################
     ## Split training/test data (70% training data)
-    X_train, X_test, Y_train, Y_test = sklearn.model_selection.train_test_split(X, y, test_size = 0.95)
+    X_train, X_test, Y_train, Y_test = sklearn.model_selection.train_test_split(X, y, test_size = 0.30)
 
     #print("X train shape, ", X_train.shape)
     #print("X test shape, ", X_test.shape)
@@ -150,6 +150,7 @@ def implementLinearBaysianRegression(X_train, X_test, Y_train, Y_test):
     ## “Least Squares” means that we’re trying to fit a regression line that would minimize the square of distance from the regression line
     ols = LinearRegression(copy_X = True, fit_intercept = True, normalize = False)
     ols.fit(X_train, Y_train)
+
 
     ## --> Testing
     confidence = ols.score(X_test, Y_test)
@@ -184,29 +185,57 @@ def implementLinearBaysianRegression(X_train, X_test, Y_train, Y_test):
     regression_model_mse = mean_squared_error(y_pred_test, Y_test)
     print(math.sqrt(regression_model_mse)) #getting the sqrt gives us how likely the prediction is far from the true value
 
+    ## implement the hypothesis testing using T-statistics testing on the Bayesian linear regression 
+    ## we referenced this article to compute the T-statistics test against linear regression 
+    ## http://connor-johnson.com/2014/02/18/linear-regression-with-python/
+
+    print("\n---------------------------------------------------------------------------------------")
+    print("Implementing Hypothesis testing here -- implementing T-test on Bayesian linear regression")
+
+    beta = ols.coef_
+    se = math.sqrt(regression_model_mse)
+    t = beta / se
+    print('t =', t)    
+
+    N = len(y_pred_test) 
+    print("sample size = ", N)
+
+    P = 1 
+    dof = N - P - 1
+    hp = 1.0 - scipy.stats.t( dof ).cdf( t )
+    p = hp * 2.0
+    print("p = ", p)
+    z = scipy.stats.t( dof ).ppf(0.975)
+ 
+    # the confidence interval
+    print("The confidence interval is: ")
+    print(beta - z * se, beta + z * se)
+
+
 
     score = np.squeeze(np.asarray(X_test[:, 0]))
 
     #print("this is the prediction for test dataset: ")
     #print(y_pred_test)
 
-    ## classification report -- Doesn't work due to 
+    ## classification report -- Doesn't work due to different datatypes between the y_test and y_pred_test values 
     #print("The training classification report:")
     #print(classification_report(Y_test, y_pred_test))
 
-    #print("The testing classification report:")
-    #print (classification_report (Y_test, y_pred_test))
-
     ## --> Creating a risidual graph of the training and test data to see the distro
+    
+    ## This is the plot for the risidual distributionn for linear predictions
     #plt.scatter(ols.predict(X_train), ols.predict(X_train) - Y_train, c='b')
     #plt.scatter(ols.predict(X_test), ols.predict(X_test) - Y_test, c='g')
-    #plt.hlines(y = 0, xmin = 9000, xmax = 17000)
+    #plt.title('BLR: Residual Plot using training(blue) and test(green) data')
+    
+    ## this is the plot of the distribution
     plt.scatter(score, y_pred_test, c='g')
-    plt.title('BLR: Residual Plot using training(blue) and test(green) data')
+    plt.title('Baysian Linear Regression predictions')
     plt.ylabel('Fluctuation')
     plt.xlabel('Sentiment Score')
+    
     plt.show()
-
 
     return ols, y_pred_train, y_pred_test
 
@@ -328,7 +357,7 @@ def implementSVM(X_train, X_test, Y_train, Y_test, tweet_list):
 
     #svr_rbf = SVR(kernel='rbf', C=1e3, gamma=0.1, cache_size = 8000)
     #svr_lin = SVR(kernel='linear', C=1e3, cache_size = 8000)
-    svr_poly = SVR(kernel='poly', C=1e3, degree=4, cache_size = 10000)
+    svr_poly = SVR(kernel='poly', C=1e3, degree=12, cache_size = 10000)
     
     #svr_rbf.fit(X_train, Y_train)
     #svr_lin.fit(X_train, Y_train)
@@ -345,28 +374,21 @@ def implementSVM(X_train, X_test, Y_train, Y_test, tweet_list):
     poly_prediction = svr_poly.predict(X_train)
     print("Poly score is --> ", svr_poly.score(X_train, Y_train))
     print("Poly prediction = " + str(poly_prediction))
-
+    
     score = np.squeeze(np.asarray(X_train[:, 0]))
     
-
     ##Draw black dots representing prices
-    #plt.plot(X_train, lin_prediction, color = 'blue', linewidth = 3, label = 'Linear Model')
-    
-    plt.plot(X_train, poly_prediction, color = 'green', linewidth = 3, label = 'Polynomial Model')
+    #plt.plot(score, lin_prediction, color = 'blue', linewidth = 3, label = 'Linear Model')
+    #plt.title('SVM: Linear Regression Plot')
+
+    plt.plot(score, poly_prediction, color = 'green', linewidth = 3, label = 'Polynomial Model')
     plt.title('SVM: Polynomial Regression Plot')
 
     #plt.plot(X_train, rbf_prediction, color = 'red', linewidth = 4, label = 'RBF Model')
     #plt.title('SVM: RBF Regression Plot')
     plt.xlabel("Sentiment Score")
-    plt.ylabel("Fluctuation")
+    plt.ylabel("Fluctuation Prediction")
     plt.show()
-
-
-    ## classification report
-    print("The classification report:")
-    #print (classification_report (Y_train, rbf_prediction))
-    #print (classification_report (Y_train, lin_prediction))
-    print (classification_report (Y_train, poly_prediction))
 
     ## return required variable here once ready 
     return ""
@@ -451,8 +473,8 @@ def writeWekaCSVFile(tweet_list):
 ## main function
 def main():
     ## Enter the location of the CSV Datasets 
-    tweet_file_name = "D:\Twitter_Dataset\\bitcoins_for_plotting.csv"
-    btc_file_name = "D:\Twitter_Dataset\\bitcoin_price.csv"
+    tweet_file_name = "bitcoins_for_plotting.csv"
+    btc_file_name = "bitcoin_price.csv"
     
     ##----------------------------------------------------------------------------------
     ## Gather the data from the files into different object types
@@ -462,31 +484,31 @@ def main():
     ## Split the data into testing and training data 
     X_train, X_test, Y_train, Y_test = splitTestTrainingData(tweet_list)
 
-    # write to external file
+    # uncomment if writing dataset to external file
     #writeWekaCSVFile(tweet_list)
 
     ##----------------------------------------------------------------------------------
     ## Implement the various algorithms for price predictions
+    ## uncomment the code associated with each implementation as needed 
     
     ## Linear Baysian Algorithm
-    #linearBaysian, lb_pred_train, lb_pred_test = implementLinearBaysianRegression(X_train, X_test, Y_train, Y_test)
+    linearBaysian, lb_pred_train, lb_pred_test = implementLinearBaysianRegression(X_train, X_test, Y_train, Y_test)
 
     ## Polynomial Baysian Algorithm
-    #y_pred_test = implementPolyBaysianRegression(X_train, X_test, Y_train, Y_test)
+    #poly_pred_Test = implementPolyBaysianRegression(X_train, X_test, Y_train, Y_test)
 
     ## SVM
-    SVM = implementSVM(X_train, X_test, Y_train, Y_test, tweet_list)    
+    #SVM = implementSVM(X_train, X_test, Y_train, Y_test, tweet_list)    
     
-    # Logistic Regression
+    ## Logistic Regression
     #implementLogisticRegression(X_train, X_test, Y_train, Y_test)
     
-
     ##----------------------------------------------------------------------------------
     ## Plot various data and regressions here
     
     #plotSentimentandPrice(tweetC_list, bitcoinPrices)
     #plotPriceLinearBaysian(X_train, X_test, Y_train, lb_pred_train, lb_pred_test, bitcoinPrices, tweetC_list)
-    ##plotPricePolynomialBaysian(X_train, X_test, Y_test, y_pred_test, bitcoinPrices, tweetC_list)
+    #plotPricePolynomialBaysian(X_train, X_test, Y_test, poly_pred_Test, bitcoinPrices, tweetC_list)
     
     print("Done!")
 
