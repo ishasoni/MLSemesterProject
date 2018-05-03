@@ -473,7 +473,7 @@ def writeWekaCSVFile(tweet_list):
 ## main function
 def main():
     ## Enter the location of the CSV Datasets 
-    tweet_file_name = "bitcoins_for_plotting.csv"
+    tweet_file_name = "bitcoin_tweets.csv"
     btc_file_name = "bitcoin_price.csv"
     
     ##----------------------------------------------------------------------------------
